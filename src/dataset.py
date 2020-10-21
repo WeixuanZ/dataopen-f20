@@ -20,5 +20,6 @@ def load_census_data() -> pd.DataFrame:
     }, inplace=True)
 
     census.drop(columns='Unnamed: 0', inplace=True)
+    census.reset_index(drop=True, inplace=True)
 
     return census
