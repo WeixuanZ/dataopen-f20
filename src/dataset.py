@@ -1,9 +1,28 @@
 import pandas as pd
 
 
+def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Removes N/A, max and negative values"""
+    df.dropna(axis='index', how='any', inplace=True)
+
+    bad_geoids = set()
+
+    # ('household_income', 'home_value')
+    for col in ('B19013_001E', 'B25077_001E'):
+        big = (df[col] == df[col].max())
+        neg = (df[col] < 0)
+
+        geoids = df[big | neg].geoid
+        bad_geoids.update(geoids)
+
+    return df[~df.geoid.isin(bad_geoids)]
+
+
 def load_census_data() -> pd.DataFrame:
     files = map(lambda year: f'../data/Census{year}.csv', range(2009, 2019))
-    census = pd.concat(map(pd.read_csv, files))
+    dfs = map(pd.read_csv, files)
+
+    census = pd.concat(map(_clean_census_data, dfs))
 
     census.rename(columns={
         'B01001_001E': 'population',  # 'Total Population'
