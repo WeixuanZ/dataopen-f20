@@ -1,3 +1,5 @@
+from os import path
+
 import pandas as pd
 
 
@@ -19,7 +21,9 @@ def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_census_data() -> pd.DataFrame:
-    files = map(lambda year: f'../data/Census{year}.csv', range(2009, 2019))
+    current_dir = path.dirname(path.realpath(__file__))
+
+    files = map(lambda year: path.join(current_dir, f'../data/Census{year}.csv'), range(2009, 2019))
     dfs = map(pd.read_csv, files)
 
     census = pd.concat(map(_clean_census_data, dfs))
