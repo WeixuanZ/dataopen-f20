@@ -3,6 +3,17 @@ from os import path
 import pandas as pd
 
 
+def _load_census_year(directory: str, year: int) -> pd.DataFrame:
+    main_df = pd.read_csv(path.join(directory, f'Census{year}.csv'))
+    education_df = pd.read_csv(path.join(directory, f'Census_education_{year}.csv'))
+
+    # We have data by sex and degree type, but we only care about the total number
+    columns = filter(lambda col: col.startswith('B'), education_df.columns)
+    education_df['pop_graduates'] = education_df[columns].sum(axis=1)
+
+    return main_df.merge(education_df[['geoid', 'pop_graduates']], on='geoid', validate='one_to_one')
+
+
 def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
     """Removes N/A, max and negative values"""
     df.dropna(axis='index', how='any', inplace=True)
@@ -39,9 +50,9 @@ def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_census_data(normalize: bool = True) -> pd.DataFrame:
     current_dir = path.dirname(path.realpath(__file__))
+    data_dir = path.join(current_dir, '../../data/')
 
-    files = map(lambda year: path.join(current_dir, f'../../data/Census{year}.csv'), range(2009, 2019))
-    dfs = map(pd.read_csv, files)
+    dfs = [_load_census_year(data_dir, year) for year in range(2009, 2018 + 1)]
 
     census = pd.concat(map(_clean_census_data, dfs))
 
