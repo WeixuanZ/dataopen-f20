@@ -48,6 +48,31 @@ def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
+    """See https://www.governing.com/gov-data/gentrification-report-methodology.html"""
+    # Population at least 500
+    df['big_population'] = df.groupby('geoid')['population'].transform(lambda series: (series > 500).all())
+
+    # Median household income in the bottom 40th percentile of its metro area
+    income_threshold = df.groupby(['year', 'state', 'county'])['household_income'].quantile(0.40)
+    df = df.merge(income_threshold.rename('income_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['low_income'] = df['household_income'] < df['income_threshold']
+
+    # Median home value in the bottom 40th percentile of its metro area
+    value_threshold = df.groupby(['year', 'state', 'county'])['home_value'].quantile(0.40)
+    df = df.merge(value_threshold.rename('value_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['low_value'] = df['home_value'] < df['value_threshold']
+
+    # Can gentrify if all three conditions are met simultaneously for at least one year
+    can_gentrify = df.groupby('geoid').apply(lambda tract_df: (
+        tract_df['big_population'] & tract_df['low_income'] & tract_df['low_value']).any())
+    df = df.merge(can_gentrify.rename('can_gentrify'), on='geoid', validate='many_to_one')
+
+    return df
+
+
 def load_census_data(normalize: bool = True) -> pd.DataFrame:
     current_dir = path.dirname(path.realpath(__file__))
     data_dir = path.join(current_dir, '../../data/')
@@ -72,6 +97,8 @@ def load_census_data(normalize: bool = True) -> pd.DataFrame:
 
     if normalize:
         census = _normalize_census_data(census)
+
+    census = _compute_can_gentrify(census)
 
     census.drop(columns='Unnamed: 0', inplace=True)
     census.reset_index(drop=True, inplace=True)
