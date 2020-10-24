@@ -17,7 +17,7 @@ np.random.seed(6)  # for reproducibility
 FEATURES = ['geoid', 'year', 'population', 'household_income', 'home_value', 'pop_non_hispanic_caucasians',
             'pop_non_hispanic_blacks', 'pop_indians_alaskans', 'pop_non_hispanic_asians',
             'pop_non_hispanic_hawaiians_pacific', 'pop_non_hispanic_others', 'pop_non_hispanic_multi_racials',
-            'pop_hispanics_latinos']  # TODO add pop_graduate
+            'pop_hispanics_latinos', 'pop_graduates']
 NUM_YEAR = 10
 census_df = load_census_data()[FEATURES]
 
@@ -74,7 +74,7 @@ def build_model(input_shape: tuple) -> Sequential:
 
 
 def train_model(model, x, y, batch_size, epoch,
-                save_file='./cache/predictor_model.hdf5', show_loss=False):
+                save_model_path, show_loss=False):
     history = model.fit(x, y, batch_size=batch_size, epochs=epoch, verbose=1)
     if show_loss:
         plt.plot(history.history['loss'])
@@ -82,15 +82,15 @@ def train_model(model, x, y, batch_size, epoch,
         plt.show()
 
     try:
-        model.save(save_file)
+        model.save(save_model_path)
     except OSError:
-        os.mkdir('./cache')
-        model.save(save_file)
+        os.mkdir(os.path.dirname(save_model_path))
+        model.save(save_model_path)
 
     return model
 
 
-def predict(df, model=None, iteration=10, cache_path='./cache/predictor_model.hdf5', batch_size=2000, epoch=80):
+def predict(df, model=None, iteration=10, model_path='../model/predictor_model.hdf5', batch_size=2000, epoch=80):
     lookback = NUM_YEAR - 1
     data = format_tract_year_feat(df)
     num_tracts, _, num_features = data.shape
@@ -98,11 +98,12 @@ def predict(df, model=None, iteration=10, cache_path='./cache/predictor_model.hd
     if model is None:
         try:
             print('[INFO] Using cached model.')
-            model = keras.models.load_model(cache_path)
+            model = keras.models.load_model(model_path)
         except Exception:
             print('[INFO] No pre-trained model found, training a model for it now.')
             x_train, x_test, y_train, y_test = prep_data(data)
-            model = train_model(build_model(x_train.shape[1:]), x_train, y_train, batch_size, epoch, show_loss=True)
+            model = train_model(build_model(x_train.shape[1:]), x_train, y_train, batch_size, epoch, model_path,
+                                show_loss=True)
             score = model.evaluate(x=x_test, y=y_test)
             print(score[0], score[1])
 
@@ -119,6 +120,7 @@ def predict(df, model=None, iteration=10, cache_path='./cache/predictor_model.hd
         predictions = np.append(predictions, x, axis=0) if predictions is not None else x
         print(f'    {predictions.shape[0]} / {num_tracts}')
 
+    print('[INFO] Prediction completed.')
     return predictions
 
 

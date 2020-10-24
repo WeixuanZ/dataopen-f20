@@ -48,7 +48,7 @@ def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
+def compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
     """See https://www.governing.com/gov-data/gentrification-report-methodology.html"""
     # Population at least 500
     df['big_population'] = df.groupby('geoid')['population'].transform(lambda series: (series > 500).all())
@@ -98,7 +98,7 @@ def load_census_data(normalize: bool = True) -> pd.DataFrame:
     if normalize:
         census = _normalize_census_data(census)
 
-    census = _compute_can_gentrify(census)
+    census = compute_can_gentrify(census)
 
     census.drop(columns='Unnamed: 0', inplace=True)
     census.reset_index(drop=True, inplace=True)
