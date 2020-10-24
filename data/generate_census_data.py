@@ -1,10 +1,11 @@
 # pip install census
 
+from os import environ
 import pandas as pd
 from census import Census
 from census.core import CensusException
 
-YOUR_API_KEY = '***REMOVED***'
+YOUR_API_KEY = environ['CENSUS_API_KEY']
 CENSUS_FILE_NAME = 'Census_education'
 # variables = ['NAME', 'B01001_001E',  'B19013_001E', 'B25077_001E',
 #              'B03002_003E', 'B03002_004E',  'B02001_004E', 'B03002_006E',
