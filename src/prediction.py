@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
+from keras.layers import Dense, LSTM
 from sklearn.model_selection import train_test_split
 
 from util.dataset import load_census_data
@@ -27,19 +27,18 @@ home_scalar = MinMaxScaler(census_df, 'home_value')
 
 # normalisation
 list(map(
-    lambda s: s.transform(),
+    lambda s: s.transform(census_df),
     [pop_scalar, income_scalar, home_scalar]
 ))
 
 
-def format_tract_year_feat(census_df: pd.DataFrame) -> np.ndarray:
-    """Format an array of shape (tract, years, features)
-
-    The features are the ones in FEATURES, starting with 'geoid'
+def format_tract_year_feat(df: pd.DataFrame) -> np.ndarray:
+    """Format an array of shape (tract, years, features).
+    The features are the ones in FEATURES, starting with 'geoid'.
     """
 
     dataset = None
-    grouped_tract_df = census_df.groupby('geoid')
+    grouped_tract_df = df.groupby('geoid')
     for name, tract_df in grouped_tract_df:
         tract_array = tract_df.to_numpy()
 
@@ -55,12 +54,12 @@ def format_tract_year_feat(census_df: pd.DataFrame) -> np.ndarray:
 
 
 def prep_data(data: np.ndarray) -> tuple:
+    """Remove geoid and year, also split into training and testing sets."""
     x = data[:, :-1, 2:]  # use 2: to remove geoid and year from training data
     y = data[:, -1, 2:]  # use the find year as y
     # print(x.shape, y.shape)
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=42)
-
     return x_train, x_test, y_train, y_test
 
 
@@ -91,10 +90,10 @@ def train_model(model, x, y, batch_size, epoch,
     return model
 
 
-def predict(model=None, iteration=10,  dataset_size=1000, cache_path='./cache/predictor_model.hdf5'):
+def predict(df, model=None, iteration=10, cache_path='./cache/predictor_model.hdf5', batch_size=2000, epoch=80):
     lookback = NUM_YEAR - 1
-    data = format_tract_year_feat(census_df)
-    num_tracts = data.shape[0]
+    data = format_tract_year_feat(df)
+    num_tracts, _, num_features = data.shape
 
     if model is None:
         try:
@@ -103,29 +102,45 @@ def predict(model=None, iteration=10,  dataset_size=1000, cache_path='./cache/pr
         except Exception:
             print('[INFO] No pre-trained model found, training a model for it now.')
             x_train, x_test, y_train, y_test = prep_data(data)
-            model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 2000, 80, show_loss=True)
+            model = train_model(build_model(x_train.shape[1:]), x_train, y_train, batch_size, epoch, show_loss=True)
+            score = model.evaluate(x=x_test, y=y_test)
+            print(score[0], score[1])
 
     # prediction of future <iteration> readings, based on the last <lookback> values
     predictions = None
     for tract_data in data:
         x = np.copy(tract_data)
-        geoid = x[0, 0]
-        year = x[0, 1]
         for i in range(iteration):
             prediction = model.predict(x[:, 2:][-lookback:, :].reshape(1, lookback, -1))
-            prediction = np.insert(prediction, 0, year, axis=1)
-            prediction = np.insert(prediction, 0, geoid, axis=1)
+            prediction = np.insert(prediction, 0, x[-1, 1] + 1, axis=1)  # year
+            prediction = np.insert(prediction, 0, x[0, 0], axis=1)  # geoid
             x = np.append(x, prediction, axis=0)
-        x = x.reshape(1, -1, len(FEATURES))
+        x = x.reshape(1, -1, num_features)
         predictions = np.append(predictions, x, axis=0) if predictions is not None else x
         print(f'    {predictions.shape[0]} / {num_tracts}')
 
     return predictions
 
 
-# x_train, x_test, y_train, y_test = prep_data(format_tract_year_feat(census_df))
-# model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 2000, 80, show_loss=True)
-# score = model.evaluate(x=x_test, y=y_test)
-# print(score[0], score[1])
+def convert_to_df(predictions: np.ndarray) -> pd.DataFrame:
+    num_tracts, num_years, _ = predictions.shape
+    predictions_flat = None
+    for t in range(num_tracts):
+        for y in range(num_years):
+            feats = predictions[t, y, :].reshape(1, -1)
+            predictions_flat = np.append(predictions_flat, feats, axis=0) if predictions_flat is not None else feats
 
-predict()
+    census_predict_df = pd.DataFrame(data=predictions_flat, columns=FEATURES)
+
+    list(map(
+        lambda s: s.reverse_transform(census_predict_df),
+        [pop_scalar, income_scalar, home_scalar]
+    ))
+
+    return census_predict_df
+
+
+census_predict_df = convert_to_df(predict(census_df))
+print(census_predict_df.head())
+census_predict_df.to_csv('../data/census_predict.csv')
+print('[INFO] csv saved.')
