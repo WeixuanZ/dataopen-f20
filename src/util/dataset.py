@@ -1,5 +1,6 @@
 from os import path
 
+import numpy as np
 import pandas as pd
 
 
@@ -67,6 +68,45 @@ def compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
 
     # Can gentrify if all three conditions are met simultaneously
     df['can_gentrify'] = df['big_population'] & df['low_income'] & df['low_value']
+
+    return df
+
+
+def compute_has_gentrified(df: pd.DataFrame, starting_year: int) -> pd.DataFrame:
+    """See https://www.governing.com/gov-data/gentrification-report-methodology.html"""
+    def pick_year(df: pd.DataFrame):
+        if (df.year == starting_year).any():
+            return df[df['year'] == starting_year].iloc[0]
+        return np.nan
+
+    # An increase in a tract's educational attainment, as measured by the percentage of residents
+    # age 25 and over holding bachelor’s degrees, was in the top third percentile of all tracts within a metro area
+    gs = df.groupby('geoid')[['year', 'pop_graduates']].agg(pick_year)['pop_graduates']
+    df = df.merge(gs.rename('pop_graduates_start'), on='geoid', validate='many_to_one')
+
+    df['pop_graduates_change'] = (df['pop_graduates'] / df['pop_graduates_start']) - 1
+
+    gct = df.groupby(['year', 'state', 'county'])['pop_graduates_change'].quantile(0.66)
+    df = df.merge(gct.rename('pop_graduates_change_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['pop_graduates_big_change'] = df['pop_graduates_change'] > df['pop_graduates_change_threshold']
+
+    # A tract’s median home value increased when adjusted for inflation
+    hv = df.groupby('geoid')[['year', 'home_value']].agg(pick_year)['home_value']
+    df = df.merge(hv.rename('home_value_start'), on='geoid', validate='many_to_one')
+
+    df['home_value_increase'] = (df['home_value'] / df['home_value_start']) - 1
+
+    # The percentage increase in a tract’s median home value
+    # was in the top third percentile of all tracts within a metro area
+    hvt = df.groupby(['year', 'state', 'county'])['home_value_increase'].quantile(0.66)
+    df = df.merge(hvt.rename('home_value_increase_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['home_value_big_increase'] = ((df['home_value_increase'] > 0) & (
+        df['home_value_increase'] > df['home_value_increase_threshold']))
+
+    # Has gentrified if all three conditions are met simultaneously
+    df['has_gentrified'] = df['pop_graduates_big_change'] & df['home_value_big_increase']
 
     return df
 
