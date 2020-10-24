@@ -65,10 +65,8 @@ def compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
 
     df['low_value'] = df['home_value'] < df['value_threshold']
 
-    # Can gentrify if all three conditions are met simultaneously for at least one year
-    can_gentrify = df.groupby('geoid').apply(lambda tract_df: (
-        tract_df['big_population'] & tract_df['low_income'] & tract_df['low_value']).any())
-    df = df.merge(can_gentrify.rename('can_gentrify'), on='geoid', validate='many_to_one')
+    # Can gentrify if all three conditions are met simultaneously
+    df['can_gentrify'] = df['big_population'] & df['low_income'] & df['low_value']
 
     return df
 
@@ -97,8 +95,6 @@ def load_census_data(normalize: bool = True) -> pd.DataFrame:
 
     if normalize:
         census = _normalize_census_data(census)
-
-    census = compute_can_gentrify(census)
 
     census.drop(columns='Unnamed: 0', inplace=True)
     census.reset_index(drop=True, inplace=True)
