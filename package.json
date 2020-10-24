@@ -1,0 +1,15 @@
+{
+  "name": "dataopen2020",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "parcel visualization/index.html --out-dir visualization/dist",
+    "build": "parcel build visualization/index.html --out-dir visualization/dist"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  },
+  "dependencies": {
+    "mapbox-gl": "^1.12.0"
+  }
+}
