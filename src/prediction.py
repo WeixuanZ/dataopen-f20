@@ -5,8 +5,9 @@ os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import keras
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import Dense, LSTM, Dropout
 from sklearn.model_selection import train_test_split
 
 from util.dataset import load_census_data
@@ -23,6 +24,12 @@ census_df = load_census_data()[FEATURES]
 pop_scalar = MinMaxScaler(census_df, 'population')
 income_scalar = MinMaxScaler(census_df, 'household_income')
 home_scalar = MinMaxScaler(census_df, 'home_value')
+
+# normalisation
+list(map(
+    lambda s: s.transform(),
+    [pop_scalar, income_scalar, home_scalar]
+))
 
 
 def format_tract_year_feat(census_df: pd.DataFrame) -> np.ndarray:
@@ -41,37 +48,26 @@ def format_tract_year_feat(census_df: pd.DataFrame) -> np.ndarray:
             continue
 
         tract_array = tract_array.reshape(-1, shape[0], shape[1])
-        if dataset is None:
-            dataset = tract_array
-        else:
-            dataset = np.concatenate((dataset, tract_array), axis=0)
+        dataset = np.concatenate((dataset, tract_array), axis=0) if dataset is not None else tract_array
 
     # print(dataset[0,:,0]
     return dataset
 
 
-def prep_data(census_df: pd.DataFrame) -> tuple:
-    # normalisation
-    list(map(
-        lambda s: s.transform(),
-        [pop_scalar, income_scalar, home_scalar]
-    ))
-
-    data = format_tract_year_feat(census_df)
+def prep_data(data: np.ndarray) -> tuple:
     x = data[:, :-1, 2:]  # use 2: to remove geoid and year from training data
     y = data[:, -1, 2:]  # use the find year as y
     # print(x.shape, y.shape)
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=42)
 
     return x_train, x_test, y_train, y_test
 
 
 def build_model(input_shape: tuple) -> Sequential:
     model = Sequential()
-    model.add(LSTM(512, activation='relu', input_shape=input_shape, recurrent_dropout=0.1))
+    model.add(LSTM(256, activation='relu', input_shape=input_shape, recurrent_dropout=0.2))
     model.add(Dense(512, activation='relu'))
-    model.add(Dense(256, activation='relu'))
     model.add(Dense(input_shape[1], activation='tanh'))
     model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
 
@@ -95,8 +91,41 @@ def train_model(model, x, y, batch_size, epoch,
     return model
 
 
-x_train, x_test, y_train, y_test = prep_data(census_df)
-# print(y.shape)
-model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 500, 30, show_loss=True)
-score = model.evaluate(x=x_test, y=y_test)
-print(score[0], score[1])
+def predict(model=None, iteration=10,  dataset_size=1000, cache_path='./cache/predictor_model.hdf5'):
+    lookback = NUM_YEAR - 1
+    data = format_tract_year_feat(census_df)
+    num_tracts = data.shape[0]
+
+    if model is None:
+        try:
+            print('[INFO] Using cached model.')
+            model = keras.models.load_model(cache_path)
+        except Exception:
+            print('[INFO] No pre-trained model found, training a model for it now.')
+            x_train, x_test, y_train, y_test = prep_data(data)
+            model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 2000, 80, show_loss=True)
+
+    # prediction of future <iteration> readings, based on the last <lookback> values
+    predictions = None
+    for tract_data in data:
+        x = np.copy(tract_data)
+        geoid = x[0, 0]
+        year = x[0, 1]
+        for i in range(iteration):
+            prediction = model.predict(x[:, 2:][-lookback:, :].reshape(1, lookback, -1))
+            prediction = np.insert(prediction, 0, year, axis=1)
+            prediction = np.insert(prediction, 0, geoid, axis=1)
+            x = np.append(x, prediction, axis=0)
+        x = x.reshape(1, -1, len(FEATURES))
+        predictions = np.append(predictions, x, axis=0) if predictions is not None else x
+        print(f'    {predictions.shape[0]} / {num_tracts}')
+
+    return predictions
+
+
+# x_train, x_test, y_train, y_test = prep_data(format_tract_year_feat(census_df))
+# model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 2000, 80, show_loss=True)
+# score = model.evaluate(x=x_test, y=y_test)
+# print(score[0], score[1])
+
+predict()
