@@ -1,5 +1,6 @@
 from os import path
 
+import cpi
 import numpy as np
 import pandas as pd
 
@@ -33,6 +34,10 @@ def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Adjust for inflation
+    df['home_value'] = df.apply(lambda x: cpi.inflate(x['home_value'], x['year']), axis=1)
+    df['household_income'] = df.apply(lambda x: cpi.inflate(x['household_income'], x['year']), axis=1)
+
     # Normalize USD amounts
     grouped = df.groupby('geoid')
 
