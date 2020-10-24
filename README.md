@@ -2,7 +2,7 @@
 
 _Submission to 2020 European Regional Data Open._
 
-Install all the dependencies through
+The data included in this repository is tracked using Git LFS, please ensure it is installed before cloning. Install all the dependencies through
 
 ```bash
 pip install -r requirements.txt
@@ -11,7 +11,7 @@ pip install -r requirements.txt
 GPU acceleration can be enabled by running
 
 ```bash
-    plaidml-setup
+plaidml-setup
 ```
 
 This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau.
