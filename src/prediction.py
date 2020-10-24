@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, LSTM
+from sklearn.model_selection import train_test_split
 
 from util.dataset import load_census_data
 from analysis.preprocess import MinMaxScaler
@@ -24,52 +25,46 @@ income_scalar = MinMaxScaler(census_df, 'household_income')
 home_scalar = MinMaxScaler(census_df, 'home_value')
 
 
-def format_singlerow_year_tract(census_df: pd.DataFrame) -> np.ndarray:
-    """Format an array of shape (1, years, tracts(features))"""
+def format_tract_year_feat(census_df: pd.DataFrame) -> np.ndarray:
+    """Format an array of shape (tract, years, features)
+
+    The features are the ones in FEATURES, starting with 'geoid'
+    """
 
     dataset = None
     grouped_tract_df = census_df.groupby('geoid')
     for name, tract_df in grouped_tract_df:
-        tract_array = tract_df.drop(columns='geoid').to_numpy()
+        tract_array = tract_df.to_numpy()
 
         shape = tract_array.shape
-        if shape != (NUM_YEAR, len(FEATURES) - 1):
+        if shape != (NUM_YEAR, len(FEATURES)):
             continue
 
         tract_array = tract_array.reshape(-1, shape[0], shape[1])
         if dataset is None:
             dataset = tract_array
         else:
-            dataset = np.concatenate((dataset, tract_array), axis=2)
+            dataset = np.concatenate((dataset, tract_array), axis=0)
 
+    # print(dataset[0,:,0]
     return dataset
 
 
-def format_sliding_window(dataset: np.ndarray, window: int) -> np.ndarray:
-    """Format the dataset as required by LSTM layer, of shape (batch, timesteps, feature)"""
-
-    formatted = None
-    for i in range(0, NUM_YEAR - window):  # the final batch is used as y only
-        if formatted is None:
-            formatted = dataset[:, i: i + window, :]
-        else:
-            formatted = np.concatenate((formatted, dataset[:, i: i + window, :]), axis=0)
-
-    return formatted
-
-
-def prep_data(census_df: pd.DataFrame, window: int = 5) -> tuple:
+def prep_data(census_df: pd.DataFrame) -> tuple:
     # normalisation
     list(map(
         lambda s: s.transform(),
         [pop_scalar, income_scalar, home_scalar]
     ))
 
-    data = format_singlerow_year_tract(census_df)
-    x = format_sliding_window(data, window)
-    y = data[0, window:, :]
+    data = format_tract_year_feat(census_df)
+    x = data[:, :-1, 2:]  # use 2: to remove geoid and year from training data
+    y = data[:, -1, 2:]  # use the find year as y
+    # print(x.shape, y.shape)
 
-    return x, y
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
+
+    return x_train, x_test, y_train, y_test
 
 
 def build_model(input_shape: tuple) -> Sequential:
@@ -78,7 +73,7 @@ def build_model(input_shape: tuple) -> Sequential:
     model.add(Dense(512, activation='relu'))
     model.add(Dense(256, activation='relu'))
     model.add(Dense(input_shape[1], activation='tanh'))
-    model.compile(optimizer='adam', loss='mse')
+    model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
 
     return model
 
@@ -100,6 +95,8 @@ def train_model(model, x, y, batch_size, epoch,
     return model
 
 
-x, y = prep_data(census_df)
+x_train, x_test, y_train, y_test = prep_data(census_df)
 # print(y.shape)
-train_model(build_model(x.shape[1:]), x, y, 5, 10000, show_loss=True)
+model = train_model(build_model(x_train.shape[1:]), x_train, y_train, 500, 30, show_loss=True)
+score = model.evaluate(x=x_test, y=y_test)
+print(score[0], score[1])
