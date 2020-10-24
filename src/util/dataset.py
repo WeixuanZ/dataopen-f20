@@ -105,10 +105,15 @@ def compute_has_gentrified(df: pd.DataFrame, starting_year: int) -> pd.DataFrame
     df['home_value_big_increase'] = ((df['home_value_increase'] > 0) & (
         df['home_value_increase'] > df['home_value_increase_threshold']))
 
-    # Has gentrified if all three conditions are met simultaneously
-    df['has_gentrified'] = df['pop_graduates_big_change'] & df['home_value_big_increase']
+    # Has gentrified if all three conditions are met simultaneously and year is not in the past
+    df['has_gentrified'] = df['pop_graduates_big_change'] & df['home_value_big_increase'] & (df['year'] > starting_year)
 
     return df
+
+
+def has_gentrified(df: pd.DataFrame, geoid: int, start_year, end_year) -> bool:
+    """Make sure you've already called compute_can_gentrify and compute_has_gentrified!"""
+    return df[(df['geoid'] == geoid) & (df['year'] == start_year)]['can_gentrify'].all() and df[(df['geoid'] == geoid) & (df['year'] == end_year)]['has_gentrified'].all()
 
 
 def load_census_data(normalize: bool = True) -> pd.DataFrame:
