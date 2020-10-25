@@ -18,7 +18,9 @@ The LSTM network is trained on data from 2009 to 2017, when predicting values fo
 
 A Random Forest regressor is used to predict home value based on other features from the same year of the same tract, fitted on data from 2009 to 2018. It is then used to predict home values using the predictions by the nn, the mean squared error between which and home values predicted by the nn is 0.00267. The correlation between the two is 0.865.
 
-The predicted data can be found in `data/census_predict.csv'.
+The predicted data can be found in `data/census_predict.csv`.
+
+Interactive map available at https://weixuanz.github.io/dataopen2020/.
 
 
 ---
