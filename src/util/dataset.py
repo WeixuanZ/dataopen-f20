@@ -120,7 +120,8 @@ def compute_has_gentrified(df: pd.DataFrame, starting_year: int) -> pd.DataFrame
 
 def has_gentrified(df: pd.DataFrame, geoid: int, start_year, end_year) -> bool:
     """Make sure you've already called compute_can_gentrify and compute_has_gentrified!"""
-    return df[(df['geoid'] == geoid) & (df['year'] == start_year)]['can_gentrify'].all() and df[(df['geoid'] == geoid) & (df['year'] == end_year)]['has_gentrified'].all()
+    return df[(df['geoid'] == geoid) & (df['year'] == start_year)]['can_gentrify'].all() \
+        and df[(df['geoid'] == geoid) & (df['year'] == end_year)]['has_gentrified'].all()
 
 
 def load_census_data(normalize: bool = True) -> pd.DataFrame:
