@@ -14,7 +14,7 @@ from util.dataset import load_census_data
 from util.preprocess import MinMaxScaler
 
 np.random.seed(6)  # for reproducibility
-FEATURES = ['geoid', 'year', 'population', 'household_income', 'home_value', 'pop_non_hispanic_caucasians',
+FEATURES = ['geoid', 'state', 'county', 'year', 'population', 'household_income', 'home_value', 'pop_non_hispanic_caucasians',
             'pop_non_hispanic_blacks', 'pop_indians_alaskans', 'pop_non_hispanic_asians',
             'pop_non_hispanic_hawaiians_pacific', 'pop_non_hispanic_others', 'pop_non_hispanic_multi_racials',
             'pop_hispanics_latinos', 'pop_graduates']
@@ -55,8 +55,8 @@ def format_tract_year_feat(df: pd.DataFrame) -> np.ndarray:
 
 def prep_data(data: np.ndarray) -> tuple:
     """Remove geoid and year, also split into training and testing sets."""
-    x = data[:, :-1, 2:]  # use 2: to remove geoid and year from training data
-    y = data[:, -1, 2:]  # use the find year as y
+    x = data[:, :-1, 4:]  # use 4: to remove geoid, year, state and county from training data
+    y = data[:, -1, 4:]  # use the final year as y
     # print(x.shape, y.shape)
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=42)
@@ -112,10 +112,13 @@ def predict(df, model=None, iteration=10, model_path='../model/predictor_model.h
     for tract_data in data:
         x = np.copy(tract_data)
         for i in range(iteration):
-            prediction = model.predict(x[:, 2:][-lookback:, :].reshape(1, lookback, -1))
-            prediction = np.insert(prediction, 0, x[-1, 1] + 1, axis=1)  # year
-            prediction = np.insert(prediction, 0, x[0, 0], axis=1)  # geoid
+            prediction = model.predict(x[:, 4:][-lookback:, :].reshape(1, lookback, -1))
+            prediction = np.concatenate(([[x[-1, 3] + 1]], prediction), axis=1)  # year
+            prediction = np.concatenate(([[x[0, 2]]], prediction), axis=1)  # county
+            prediction = np.concatenate(([[x[0, 1]]], prediction), axis=1)  # state
+            prediction = np.concatenate(([[x[0, 0]]], prediction), axis=1)  # geoid
             x = np.append(x, prediction, axis=0)
+
         x = x.reshape(1, -1, num_features)
         predictions = np.append(predictions, x, axis=0) if predictions is not None else x
         print(f'    {predictions.shape[0]} / {num_tracts}')
