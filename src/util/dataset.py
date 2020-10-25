@@ -35,6 +35,8 @@ def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
     # Adjust for inflation
+    cpi.update()
+
     df['home_value'] = df.apply(lambda x: cpi.inflate(x['home_value'], x['year']), axis=1)
     df['household_income'] = df.apply(lambda x: cpi.inflate(x['household_income'], x['year']), axis=1)
 
