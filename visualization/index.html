@@ -5,9 +5,66 @@
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+    <link href='https://weixuanz.github.io/assets/css/styles.css' rel='stylesheet' />
+    <style type="text/css">
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%
+        }
+        #menu {
+            position: absolute;
+            top: 0;
+            right: 0; 
+            background: #fff;
+            padding: 10px;
+        }
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        #main-footer {
+            margin: 0;
+            padding: 0;
+            position: sticky;
+            bottom: 5px;
+            z-index: 1000;
+            width: 50%;
+            margin-left: auto;
+            margin-right: auto; 
+        }
+
+    </style>
 </head>
 <body>
-    <div id="map" style="width: 100%; height: 100%"></div>
+    <h1 class="header">Gentrification Prediction and Analysis</h1>
+    <div id="map"></div>
+
+    <div id="menu">
+        <h3>Time Period</h3>
+
+        <input id="2009-2018" type="radio" name="rtoggle" value="ckgo3bk222iew19quuk25vjwf" checked="checked"/>
+        <label for="2009-2018">2009-2018</label>
+        
+        <input id="light-v10" type="radio" name="rtoggle" value="ckgpaebi80rw01aofckorktq3" />
+        <label for="light-v10">2019-2023</label>
+        
+        <input id="dark-v10" type="radio" name="rtoggle" value="ckgpaftau0e3s19qlhpce5c6m" />
+        <label for="dark-v10">2024-2028</label>
+        
+        <input id="outdoors-v11" type="radio" name="rtoggle" value="ckgpa9v1l3o0y19sdpma1jo8v" />
+        <label for="outdoors-v11">2019-2028</label>
+    
+    </div>
+    <footer id="main-footer">
+        2020 &copy MIT <a href="https://github.com/WeixuanZ/dataopen2020">W Zhang et al.</a>, submission for European Regional Data Open. Data from US Census Bureau, NYC Open Data.
+    </footer>
+
     <script src="./index.js"></script>
 </body>
 </html>
