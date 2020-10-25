@@ -10,7 +10,7 @@ FEATURES = ['geoid', 'year', 'population', 'household_income', 'home_value', 'po
             'pop_non_hispanic_hawaiians_pacific', 'pop_non_hispanic_others', 'pop_non_hispanic_multi_racials',
             'pop_hispanics_latinos', 'pop_graduates']
 
-data = pd.read_csv('../data/census_predict.csv').drop(columns='Unnamed: 0')
+data = pd.read_csv('../data/census_predict.csv')[FEATURES]
 
 pop_scalar = MinMaxScaler(data, 'population')
 income_scalar = MinMaxScaler(data, 'household_income')
