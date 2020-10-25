@@ -5,7 +5,7 @@ _Submission to 2020 European Regional Data Open._
 The data included in this repository is tracked using Git LFS, please ensure it is installed before cloning. All the dependencies can be installed through
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt && yarn install
 ```
 
 GPU acceleration can be enabled by running
