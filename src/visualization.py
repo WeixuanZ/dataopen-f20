@@ -8,6 +8,7 @@ END_YEAR = 2018  # 2028
 DATA = pd.read_csv('../data/census_predict.csv')
 DATA = compute_can_gentrify(DATA)
 DATA = compute_has_gentrified(DATA, START_YEAR)
+DATA.to_csv('../data/census_predict_gentrification.csv')
 
 geo_data = GeoData()
 feat_hashtable = geo_data.get_hashtable()
@@ -31,5 +32,5 @@ for _, row in DATA.iterrows():
     geo_data.insert_data(index, row)
 
 filename = f'{START_YEAR}_{END_YEAR}.geojson'
-print(f'[INFO] Writing to {filename}.geojson')
+print(f'[INFO] Writing to {filename}')
 geo_data.dump(filename)
