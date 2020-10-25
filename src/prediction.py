@@ -11,7 +11,7 @@ from keras.layers import Dense, LSTM
 from sklearn.model_selection import train_test_split
 
 from util.dataset import load_census_data
-from analysis.preprocess import MinMaxScaler
+from util.preprocess import MinMaxScaler
 
 np.random.seed(6)  # for reproducibility
 FEATURES = ['geoid', 'year', 'population', 'household_income', 'home_value', 'pop_non_hispanic_caucasians',

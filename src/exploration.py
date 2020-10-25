@@ -8,18 +8,26 @@ census: pd.DataFrame = load_census_data()
 
 # Correlation matrix
 plt.figure()
-sns.heatmap(census.drop(columns=['geoid', 'state', 'county', 'tract']).corr())
+# sns.heatmap(census.drop(columns=['geoid', 'state', 'county', 'tract']).corr())
 
 # Feature importance in predicting y using Random Forest
 y = 'home_value'
-discard = ['NAME', 'relative_household_income', 'relative_home_value', 'tract', 'county', 'state', 'geoid']
+FEATURES = ['year', 'population', 'household_income', 'home_value', 'pop_non_hispanic_caucasians',
+            'pop_non_hispanic_blacks', 'pop_indians_alaskans', 'pop_non_hispanic_asians',
+            'pop_non_hispanic_hawaiians_pacific', 'pop_non_hispanic_others', 'pop_non_hispanic_multi_racials',
+            'pop_hispanics_latinos', 'pop_graduates']
+x = list(filter(lambda f: f != y, FEATURES))
+print(census[FEATURES].head())
+importance = get_feature_importance(census[FEATURES], y)
+print(importance)
+
 plt.figure()
-importance = sns.barplot(
-    census.columns.drop([y] + discard),
-    get_feature_importance(census.drop(columns=discard), y),
+importance_plot = sns.barplot(
+    x,
+    importance
 )
-importance.set_xticklabels(
-    importance.get_xticklabels(),
+importance_plot.set_xticklabels(
+    importance_plot.get_xticklabels(),
     rotation=45,
     horizontalalignment='right'
 )

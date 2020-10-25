@@ -1,5 +1,7 @@
 from os import path
 
+import cpi
+import numpy as np
 import pandas as pd
 
 
@@ -32,6 +34,12 @@ def _clean_census_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalize_census_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Adjust for inflation
+    cpi.update()
+
+    df['home_value'] = df.apply(lambda x: cpi.inflate(x['home_value'], x['year']), axis=1)
+    df['household_income'] = df.apply(lambda x: cpi.inflate(x['household_income'], x['year']), axis=1)
+
     # Normalize USD amounts
     grouped = df.groupby('geoid')
 
@@ -65,12 +73,55 @@ def compute_can_gentrify(df: pd.DataFrame) -> pd.DataFrame:
 
     df['low_value'] = df['home_value'] < df['value_threshold']
 
-    # Can gentrify if all three conditions are met simultaneously for at least one year
-    can_gentrify = df.groupby('geoid').apply(lambda tract_df: (
-        tract_df['big_population'] & tract_df['low_income'] & tract_df['low_value']).any())
-    df = df.merge(can_gentrify.rename('can_gentrify'), on='geoid', validate='many_to_one')
+    # Can gentrify if all three conditions are met simultaneously
+    df['can_gentrify'] = df['big_population'] & df['low_income'] & df['low_value']
 
     return df
+
+
+def compute_has_gentrified(df: pd.DataFrame, starting_year: int) -> pd.DataFrame:
+    """See https://www.governing.com/gov-data/gentrification-report-methodology.html"""
+    def pick_year(df: pd.DataFrame):
+        if (df.year == starting_year).any():
+            return df[df['year'] == starting_year].iloc[0]
+        return np.nan
+
+    # An increase in a tract's educational attainment, as measured by the percentage of residents
+    # age 25 and over holding bachelor’s degrees, was in the top third percentile of all tracts within a metro area
+    gs = df.groupby('geoid')[['year', 'pop_graduates']].agg(pick_year)['pop_graduates']
+    df = df.merge(gs.rename('pop_graduates_start'), on='geoid', validate='many_to_one')
+
+    df['pop_graduates_change'] = (df['pop_graduates'] / df['pop_graduates_start']) - 1
+
+    gct = df.groupby(['year', 'state', 'county'])['pop_graduates_change'].quantile(0.66)
+    df = df.merge(gct.rename('pop_graduates_change_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['pop_graduates_big_change'] = df['pop_graduates_change'] > df['pop_graduates_change_threshold']
+
+    # A tract’s median home value increased when adjusted for inflation
+    hv = df.groupby('geoid')[['year', 'home_value']].agg(pick_year)['home_value']
+    df = df.merge(hv.rename('home_value_start'), on='geoid', validate='many_to_one')
+
+    df['home_value_increase'] = (df['home_value'] / df['home_value_start']) - 1
+
+    # The percentage increase in a tract’s median home value
+    # was in the top third percentile of all tracts within a metro area
+    hvt = df.groupby(['year', 'state', 'county'])['home_value_increase'].quantile(0.66)
+    df = df.merge(hvt.rename('home_value_increase_threshold'), on=['year', 'state', 'county'], validate='many_to_one')
+
+    df['home_value_big_increase'] = ((df['home_value_increase'] > 0) & (
+        df['home_value_increase'] > df['home_value_increase_threshold']))
+
+    # Has gentrified if all three conditions are met simultaneously and year is not in the past
+    df['has_gentrified'] = df['pop_graduates_big_change'] & df['home_value_big_increase'] & (df['year'] > starting_year)
+
+    return df
+
+
+def has_gentrified(df: pd.DataFrame, geoid: int, start_year, end_year) -> bool:
+    """Make sure you've already called compute_can_gentrify and compute_has_gentrified!"""
+    return df[(df['geoid'] == geoid) & (df['year'] == start_year)]['can_gentrify'].all() \
+        and df[(df['geoid'] == geoid) & (df['year'] == end_year)]['has_gentrified'].all()
 
 
 def load_census_data(normalize: bool = True) -> pd.DataFrame:
@@ -97,8 +148,6 @@ def load_census_data(normalize: bool = True) -> pd.DataFrame:
 
     if normalize:
         census = _normalize_census_data(census)
-
-    census = compute_can_gentrify(census)
 
     census.drop(columns='Unnamed: 0', inplace=True)
     census.reset_index(drop=True, inplace=True)
