@@ -10,7 +10,7 @@ def get_feature_importance(df: pd.DataFrame, feat: str, n: int = 5000):
     """Get the importance of each figure wrt the specified feature"""
 
     df = df.sample(n, axis=0)
-    model = AdaBoostClassifier().fit(df.loc[:, df.columns != feat], df[feat])
+    model = AdaBoostClassifier().fit(df.loc[:, df.columns != feat], df[feat].transform(lambda x: int(x)))
 
     return model.feature_importances_
 
