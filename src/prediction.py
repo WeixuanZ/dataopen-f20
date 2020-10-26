@@ -2,6 +2,7 @@ import os
 
 os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
 
+from functools import partial
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,14 +22,15 @@ FEATURES = ['geoid', 'state', 'county', 'year', 'population', 'household_income'
 NUM_YEAR = 10
 census_df = load_census_data()[FEATURES]
 
-pop_scalar = MinMaxScaler(census_df, 'population')
-income_scalar = MinMaxScaler(census_df, 'household_income')
-home_scalar = MinMaxScaler(census_df, 'home_value')
+scalars = list(map(
+    partial(MinMaxScaler, census_df),
+    ['population', 'household_income', 'home_value']
+))
 
 # normalisation
-list(map(
+len(filter(
     lambda s: s.transform(census_df),
-    [pop_scalar, income_scalar, home_scalar]
+    scalars
 ))
 
 
@@ -137,9 +139,9 @@ def convert_to_df(predictions: np.ndarray) -> pd.DataFrame:
 
     census_predict_df = pd.DataFrame(data=predictions_flat, columns=FEATURES)
 
-    list(map(
+    len(filter(
         lambda s: s.reverse_transform(census_predict_df),
-        [pop_scalar, income_scalar, home_scalar]
+        scalars
     ))
 
     return census_predict_df
