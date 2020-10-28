@@ -1,5 +1,5 @@
 mapboxgl.accessToken =
-  "pk.eyJ1Ijoid2VpeHVhbnoiLCJhIjoiY2tna3lkMnhjMWNubzMwdGVrN3ZtaHpqOSJ9.2ntrcdRtEDlAuW1OkflN4g";
+  "pk.eyJ1Ijoid2VpeHVhbnoiLCJhIjoiY2tnc29uZWQyMG13ZDJza3l0amxtdndudiJ9.1IBmaag4EZi0pFCWKpDTBA";
 var map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/weixuanz/ckgo3bk222iew19quuk25vjwf",

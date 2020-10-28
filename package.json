@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "parcel visualization/index.html --out-dir visualization/dist",
-    "build": "parcel build visualization/index.html --out-dir visualization/dist",
+    "dev": "parcel visualization/index.html --out-dir visualization/dist --public-url /dataopen2020",
+    "build": "parcel build visualization/index.html --out-dir visualization/dist --public-url /dataopen2020",
     "deploy": "gh-pages --dist visualization/dist"
   },
   "devDependencies": {
