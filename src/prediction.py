@@ -28,8 +28,8 @@ scalars = list(map(
 ))
 
 # normalisation
-len(filter(
-    lambda s: s.transform(census_df),
+sum(filter(
+    lambda s: s.transform(census_df) and False,
     scalars
 ))
 
@@ -139,8 +139,8 @@ def convert_to_df(predictions: np.ndarray) -> pd.DataFrame:
 
     census_predict_df = pd.DataFrame(data=predictions_flat, columns=FEATURES)
 
-    len(filter(
-        lambda s: s.reverse_transform(census_predict_df),
+    sum(filter(
+        lambda s: s.reverse_transform(census_predict_df) and False,
         scalars
     ))
 
